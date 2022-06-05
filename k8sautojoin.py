@@ -6,106 +6,27 @@
 #_MASTER=$(echo $_KUBE_JOIN_COMMAND|awk '{ print $3 }')
 #_TOKEN=$(echo $_KUBE_JOIN_COMMAND|awk '{ print $5 }')
 #_HASH=$(echo $_KUBE_JOIN_COMMAND|awk '{ print $7 }')
-#./k8sautojoin.py --set -c clustera -t ${_TOKEN} -m $_MASTER -a $_HASH  
+#./k8sautojoin.py --set -c clustera -t ${_TOKEN} -m $_MASTER -a $_HASH 
 # -f ~/.config/gcloud/service_accounts/k8scfs.json -p k8sp-1234
 #
-#  Auto join nodes to the cluster nodes will watch 
-# until the token will be stored within firestore 
+#  Auto join nodes to the cluster nodes will watch
+# until the token will be stored within firestore
 #
-# ./k8sautojoin.py --watch  -f ~/.config/gcloud/service_accounts/k8scfs.json -p k8sp-1234 --cluster clustera   
+# ./k8sautojoin.py --watch  -f ~/.config/gcloud/service_accounts/k8scfs.json -p k8sp-1234 --cluster clustera  
 
 import json
 import argparse
-import firebase_admin
 import threading
-import subprocess
 
-from firebase_admin import credentials
-from firebase_admin import firestore
+from k8sautocluster import show_cluster_join_command, join_cluster 
 
-from google.oauth2 import service_account
-
-
-def init_firestore(credfile, project):
-  cred = credentials.Certificate(credfile)
-  firebase_admin.initialize_app(cred, {
-                                'projectId': project, }
-                                )
-  db = firestore.client()
-  return db
-
-
-def set_cluster_node_join_credentials(db, token, master, hash, cluster,collection=u'k8s'):
-  data = {
-      u'cluster': cluster,
-      u'token': token,
-      u'hash': hash,
-      u'master': master
-  }
-  db.collection(collection).document(cluster.upper()).set(data)
-
-
-def clean_up_cluster_node_join_credentials(db, collection=u'k8s'):
-  clusters_ref = db.collection(collection)
-  docs = clusters_ref.stream()
-  for doc in docs:
-    db.collection(collection).document(doc.id).delete()
-
-
-def get_cluster_node_join_credentials(db, collection=u'k8s'):
-  clusters_ref = db.collection(collection)
-  docs = clusters_ref.stream()
-
-  for doc in docs:
-    k8s_creds = doc.to_dict()
-    print(f'{doc.id} => {doc.to_dict()}')
-    show_cluster_join_command(k8s_creds)
-
-
-def show_cluster_join_command(k8s_creds):
-  k8s_token = k8s_creds['token']
-  k8s_hash = k8s_creds['hash']
-  k8s_master = k8s_creds['master']
-  print("kubeadm join {} --token {} --discovery-token-ca-cert-hash {}".format(k8s_master, k8s_token, k8s_hash))
-
-
-def join_cluster(k8s_creds):
-  k8s_token = k8s_creds['token']
-  k8s_hash = k8s_creds['hash']
-  k8s_master = k8s_creds['master']
-  with open('join-log.out', 'w') as f:
-    process = subprocess.Popen(['kubeadm', 'join', k8s_master, \
-                                '--token', k8s_token, \
-                                '--discovery-token-ca-cert-hash', \
-                                 k8s_hash ], stdout=f)
-  print("kubeadm join {} --token {} --discovery-token-ca-cert-hash {}".format(k8s_master, k8s_token, k8s_hash))
-
-
-def watch_cluster_node_join_credentials(db, cluster, collection=u'k8s'):
-    callback_done = threading.Event()
-
-    # Create a callback on_snapshot function to capture changes
-    def on_snapshot(doc_snapshot, changes, read_time):
-
-        for change in changes:
-            k8s_creds = change.document.to_dict()
-            if change.type.name == 'ADDED':
-                print(f'Joining using new cluster settings: {change.document.id}')
-                join_cluster(k8s_creds)
-                callback_done.set()
-            elif change.type.name == 'MODIFIED':
-                print(f'Joining using modified cluster settings:: {change.document.id}')
-                join_cluster(k8s_creds)
-                callback_done.set()
-            elif change.type.name == 'REMOVED':
-                print(f'Cluster join settings removed - going home: {change.document.id}')
-                callback_done.set()
-
-    col_query = db.collection(collection).where(u'cluster', u'==', cluster)
-    query_watch = col_query.on_snapshot(on_snapshot)
-
-    callback_done.wait(timeout=600)
-    query_watch.unsubscribe()
+from k8sautogcp import (
+    gc_init_firestore, 
+    gc_get_cluster_node_join_credentials, 
+    gc_clean_up_cluster_node_join_credentials, 
+    gc_watch_cluster_node_join_credentials, 
+    gc_set_cluster_node_join_credentials
+    )
 
 
 if __name__ == "__main__":
@@ -132,7 +53,7 @@ if __name__ == "__main__":
     missing_set_keys = set()
     missing_watch_keys = set()
 
-    db = init_firestore(args.file, args.project)
+    db = gc_init_firestore(args.file, args.project)
 
     # Validate arguments
     for key, value in vars(args).items():
@@ -153,14 +74,15 @@ if __name__ == "__main__":
       ap.error("for watch operations --cluster arguments are mandratory")
 
     if args.delete:
-      clean_up_cluster_node_join_credentials(db)
+      gc_clean_up_cluster_node_join_credentials(db)
 
     if args.set:
-      clean_up_cluster_node_join_credentials(db)
-      set_cluster_node_join_credentials(db, token=args.token, master=args.master, cluster=args.cluster, hash=args.hash)
+      gc_clean_up_cluster_node_join_credentials(db)
+      gc_set_cluster_node_join_credentials(db, token=args.token, master=args.master, cluster=args.cluster, hash=args.hash)
 
     if args.get:
-      get_cluster_node_join_credentials(db)
+      k8s_creds = gc_get_cluster_node_join_credentials(db)
+      show_cluster_join_command(k8s_creds)
 
     if args.watch:
-      watch_cluster_node_join_credentials(db, args.cluster)
+      gc_watch_cluster_node_join_credentials(db, args.cluster)
