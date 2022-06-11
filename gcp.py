@@ -4,7 +4,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 
 from google.oauth2 import service_account
-from k8sautocluster import join_cluster 
+from cluster import join_cluster 
 
 def gc_init_firestore(credfile, project):
   cred = credentials.Certificate(credfile)
