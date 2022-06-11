@@ -104,10 +104,14 @@ def aws_watch_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', 
                                                     table_name=table_name,
                                                     resource=resource)
 
+  i = 0
   while k8s_creds is None:
     k8s_creds = aws_get_cluster_node_join_credentials(cluster=cluster,
                                                       table_name=table_name,
                                                       resource=resource)
+    i = i + 1 
+    print('going sleep for {} seconds until settings for cluster: {} on table: {} becomes active current iteration:{}'
+          .format(_delay, cluster, table_name, i))
     time.sleep(_delay)
 
   return k8s_creds
