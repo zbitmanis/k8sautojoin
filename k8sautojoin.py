@@ -31,18 +31,19 @@ from cluster import show_cluster_join_command, join_cluster
 def main():
     ap = argparse.ArgumentParser()
     # Add the arguments to the parser
-    ap.add_argument("-s", "--set", required=False, action='store_true', help="set cluster join settings")
-    ap.add_argument("-w", "--watch", required=False, action='store_true', help="set cluster join settings")
-    ap.add_argument("-g", "--get", required=False, action='store_true', help="get cluster join settings")
-    ap.add_argument("-d", "--delete", required=False, action='store_true', help="cleanup cluster join settings")
-    ap.add_argument("-t", "--token", required=False, help="set cluster join settings: token")
-    ap.add_argument("-m", "--master", required=False, help="set cluster join settings: master")
-    ap.add_argument("-a", "--hash", required=False, help="set cluster join settings: master")
-    ap.add_argument("-c", "--cluster", required=False, help="set cluster join settings: cluster")
-    ap.add_argument("-f", "--file", required=False, help="set cluster join settings: auth file")
-    ap.add_argument("-p", "--project", required=False, help="set cluster join settings: projectid")
-    ap.add_argument("-C", "--cloud", required=True, help="cloud provider - currently supported aws,gcp")
-    ap.add_argument("-j", "--join", required=False, action='store_true', help="auto join to the cluster")
+    ap.add_argument('-s', '--set', required=False, action='store_true', help='set cluster join settings')
+    ap.add_argument('-w', '--watch', required=False, action='store_true', help='set cluster join settings')
+    ap.add_argument('-g', '--get', required=False, action='store_true', help='get cluster join settings')
+    ap.add_argument('-d', '--delete', required=False, action='store_true', help='cleanup cluster join settings')
+    ap.add_argument('-t', '--token', required=False, help='set cluster join settings: token')
+    ap.add_argument('-m', '--master', required=False, help='set cluster join settings: master')
+    ap.add_argument('-a', '--hash', required=False, help='set cluster join settings: master')
+    ap.add_argument('-c', '--cluster', required=False, help='set cluster join settings: cluster')
+    ap.add_argument('-f', '--file', required=False, help='set cluster join settings: auth file')
+    ap.add_argument('-p', '--project', required=False, help='set cluster join settings: projectid')
+    ap.add_argument('-C', '--cloud', required=True, help='cloud provider - currently supported aws,gcp')
+    ap.add_argument('-j', '--join', required=False, action='store_true', help='auto join to the cluster')
+    ap.add_argument('-r', '--region', required=False, help='cloud region name', default='us-east-2')
     
     args = ap.parse_args()
     # Values to validate the logic of arguments
@@ -117,32 +118,33 @@ def main():
           aws_init_dynamodb_table,
           aws_watch_cluster_node_join_credentials)
 
-      client = aws_init_dynamodb()
+      client = aws_init_dynamodb(region_name=args.region)
       aws_init_dynamodb_table(client)
 
       if args.delete:
-        aws_clean_up_cluster_node_join_credentials(cluster=args.cluster)
+        aws_clean_up_cluster_node_join_credentials(cluster=args.cluster, region_name=args.region)
 
       if args.set:
-        aws_clean_up_cluster_node_join_credentials(cluster=args.cluster)
+        aws_clean_up_cluster_node_join_credentials(cluster=args.cluster, region_name=args.region)
         aws_set_cluster_node_join_credentials(token=args.token, master=args.master, 
-                                              cluster=args.cluster, hash=args.hash)
+                                              cluster=args.cluster, hash=args.hash,
+                                              region_name=args.region)
         print('set a new kubadmin join credentials for cluster: {} master: {}'
               .format(args.cluster,args.master))
 
       if args.get:
-        k8s_creds = aws_get_cluster_node_join_credentials(cluster=args.cluster)
+        k8s_creds = aws_get_cluster_node_join_credentials(cluster=args.cluster, region_name=args.region)
         if k8s_creds is None:
           print('no creds for the cluster: {} found'.format(args.cluster))
         else:
           show_cluster_join_command(k8s_creds)
       
       if args.watch:
-        k8s_creds = aws_watch_cluster_node_join_credentials(cluster=args.cluster)
+        k8s_creds = aws_watch_cluster_node_join_credentials(cluster=args.cluster, region_name=args.region)
         show_cluster_join_command(k8s_creds)
       
       if args.join:
-        k8s_creds = aws_watch_cluster_node_join_credentials(cluster=args.cluster)
+        k8s_creds = aws_watch_cluster_node_join_credentials(cluster=args.cluster, region_name=args.region)
         show_cluster_join_command(k8s_creds)
         join_cluster(k8s_creds)
     else:

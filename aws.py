@@ -8,14 +8,14 @@ from pprint import pprint
 from botocore.exceptions import ClientError
 
 
-def aws_init_dynamodb(table_name=u'k8sclusters'):
-  client = boto3.client('dynamodb')
+def aws_init_dynamodb(table_name=u'k8sclusters', region_name='us-east-2'):
+  client = boto3.client('dynamodb', region_name=region_name)
   return client
 
 
-def aws_init_dynamodb_table(client=None, table_name=u'k8sclusters'):
+def aws_init_dynamodb_table(client=None, table_name=u'k8sclusters', region_name='us-east-2'):
   if client is not None:
-   client = boto3.client('dynamodb')
+   client = boto3.client('dynamodb', region_name=region_name)
 
   dd_tables = client.list_tables()['TableNames']
 
@@ -46,9 +46,9 @@ def aws_init_dynamodb_table(client=None, table_name=u'k8sclusters'):
       print('Error on init table: {}'.format(e.response['Error']['Message']))
 
 
-def aws_set_cluster_node_join_credentials(token, master, hash, cluster, table_name=u'k8sclusters', resource=None):
+def aws_set_cluster_node_join_credentials(token, master, hash, cluster, table_name=u'k8sclusters', resource=None, region_name='us-east-2'):
   if resource is None:
-      resource = boto3.resource('dynamodb')
+      resource = boto3.resource('dynamodb', region_name=region_name)
   data = {
       u'cluster': cluster,
       u'token': token,
@@ -60,9 +60,9 @@ def aws_set_cluster_node_join_credentials(token, master, hash, cluster, table_na
   return response
 
 
-def aws_clean_up_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None):
+def aws_clean_up_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None, region_name='us-east-2'):
   if resource is None:
-      resource = boto3.resource('dynamodb')
+      resource = boto3.resource('dynamodb', region_name=region_name)
   try:
 
     table = resource.Table(table_name)
@@ -77,9 +77,9 @@ def aws_clean_up_cluster_node_join_credentials(cluster, table_name=u'k8sclusters
       return response
 
 
-def aws_get_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None):
+def aws_get_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None, region_name='us-east-2'):
   if resource is None:
-      resource = boto3.resource('dynamodb')
+      resource = boto3.resource('dynamodb', region_name=region_name)
 
   k8s_creds = None
   table = resource.Table(table_name)
@@ -95,9 +95,9 @@ def aws_get_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', re
   return k8s_creds
 
 
-def aws_watch_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None):
+def aws_watch_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', resource=None, region_name='us-east-2' ):
   if resource is None:
-      resource = boto3.resource('dynamodb')
+      resource = boto3.resource('dynamodb', region_name=region_name)
 
   _delay = 10
   k8s_creds = aws_get_cluster_node_join_credentials(cluster=cluster,
@@ -113,7 +113,7 @@ def aws_watch_cluster_node_join_credentials(cluster, table_name=u'k8sclusters', 
   return k8s_creds
 
 
-def aws_watch_cluster_node_join_dynamodbstream(cluster, table_name=u'k8sclusters', client=None):
+def aws_watch_cluster_node_join_dynamodbstream(cluster, table_name=u'k8sclusters', client=None, region_name='us-east-2'):
   if client is None:
     client = boto3.client('dynamodbstreams')
 
