@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #  Unit for K8s join setings storage and cluser join
 # Examples:
 # Generate the token using kubedm on the master node
